@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat con Azure OpenAI</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f2f2f2;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #container {
+            max-width: 600px;
+            margin: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #ccc;
+        }
+
+        #messages {
+            height: 350px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+
+        .msg-user {
+            color: #0a4da3;
+            margin-bottom: 10px;
+            padding: 6px;
+            background: #e0edff;
+            border-radius: 5px;
+        }
+        
+        .msg-ai {
+            color: #0d7312;
+            margin-bottom: 10px;
+            padding: 6px;
+            background: #defbe3;
+            border-radius: 5px;
+        }
+
+        #inputBox {
+            display: flex;
+        }
+
+        #message {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #sendBtn {
+            padding: 10px 20px;
+            background: #0066ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #sendBtn:hover {
+            background: #004acc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container">
+        <h2>Chat con Azure OpenAI</h2>
+
+        <!-- Área donde se muestran los mensajes -->
+        <div id="messages"></div>
+
+        <!-- Área de input -->
+        <div id="inputBox">
+            <input type="text" id="message" placeholder="Escribe tu mensaje..." />
+            <button id="sendBtn">Enviar</button>
+        </div>
+
+    </div>
+
+
+    <script>
+        // ------------ CONFIGURACIÓN ------------------
+
+        const API_URL = "http://localhost:4000/chat";     // Ruta REST
+        const WS_URL = "ws://localhost:4001";            // WebSocket
+
+        const SERVER_KEY = "12345";                      // Tu llave simple
+
+        // ------------ ELEMENTOS DEL DOM ------------------
+
+        const messagesDiv = document.getElementById("messages");
+        const input = document.getElementById("message");
+        const sendBtn = document.getElementById("sendBtn");
+
+
+        //--------------------------------------------------
+        // FUNCIÓN: Agregar mensajes al chat visual
+        //--------------------------------------------------
+        function addMessage(text, type) {
+            const div = document.createElement("div");
+            div.className = type === "user" ? "msg-user" : "msg-ai";
+            div.textContent = text;
+            messagesDiv.appendChild(div);
+
+            // Scroll hacia abajo automático
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+
+        //--------------------------------------------------
+        // WEBSOCKET: Recibir respuestas de la IA
+        //--------------------------------------------------
+
+        let socket = new WebSocket(WS_URL);
+
+        socket.onopen = () => {
+            console.log("WebSocket conectado!");
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.event === "ai-response") {
+                addMessage(data.message, "ai");
+            }
+        };
+
+
+        //--------------------------------------------------
+        // FUNCIÓN: Enviar mensaje al backend
+        //--------------------------------------------------
+
+        async function sendMessage() {
+            const text = input.value.trim();
+            if (text === "") return;
+
+            // Mostrar mi mensaje en pantalla
+            addMessage(text, "user");
+
+            // Enviar al backend Express
+            await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-server-key": SERVER_KEY
+                },
+                body: JSON.stringify({ message: text })
+            });
+
+            input.value = "";
+        }
+
+
+        //--------------------------------------------------
+        // EVENTOS: clic y Enter
+        //--------------------------------------------------
+
+        sendBtn.addEventListener("click", sendMessage);
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+
+    </script>
+
+</body>
+</html>
+
